@@ -1,22 +1,35 @@
 # CloudflareBackup
 A script to create Cloudflare configuration backups using curl.
 
-## Prepare the script:
+## Prepare the script
 
 1. Create a folder for your backups
 2. Download the batch file to the new folder
 3. Updated the batch file as required (*)
 
-## To run this script via File Explorer:
+## To run this script via File Explorer
 
 1. Browse to the backup folder
 2. Double-click the batch file
 
-## To run this script via Command Prompt:
+## To run this script via Command Prompt
 
 1. Open the command prompt
 2. Navigate to the backup folder
 3. Execute the script
+
+## Output structure
+
+1. The folder name convention will be
+      - Backup root (where you drop the script)
+         - Backup root\Domain 
+            - Backup root\Domain\YYYY-MM-DD HH:MM:SS
+         - Backup root\account (for Load Balancer Pools) 
+
+## Comments
+
+1. This is not a full backup as most account settings are not being copied
+2. This script was tested with Free and Pro zones in the same account
 
 ## (*) Updating the batch file
 
