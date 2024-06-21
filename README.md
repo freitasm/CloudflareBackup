@@ -47,4 +47,4 @@ A Windows script to create Cloudflare configuration backups using curl.
    - [REPLACE WITH ZONE ID TO BACKUP]: Enter the Zone ID
    - [REPLACE WITH DOMAIN NAME FOR THIS ZONE]: Enter the domain name to be used as a sub-folder
 3. Load Balancer pools are copied from account, so these need to be manually updated, with the correct Load Balance Pool
-   - If you don't use Load Balancers you can remove the commands between the comments :: Backup account level data and :: End Backup account level data - 
+   - If you don't use Load Balancers you can remove the commands between the comments :: Backup account level data and :: End Backup account level data
