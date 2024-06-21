@@ -24,7 +24,9 @@ A Windows script to create Cloudflare configuration backups using curl.
       - Backup root (where you drop the script)
          - Backup root\Domain 
             - Backup root\Domain\YYYY-MM-DD HH:MM:SS
-         - Backup root\account (for Load Balancer Pools) 
+         - Backup root\account (for Load Balancer Pools)
+
+![Backup folder structure](https://github.com/freitasm/CloudflareBackup/assets/20156997/2165b7d4-7b35-4341-b43e-91ce07d3637d)
 
 ## Comments
 
