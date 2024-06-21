@@ -1,5 +1,5 @@
 # CloudflareBackup
-A script to create Cloudflare configuration backups using curl.
+A Windows script to create Cloudflare configuration backups using curl.
 
 ## Prepare the script
 
@@ -28,7 +28,7 @@ A script to create Cloudflare configuration backups using curl.
 
 ## Comments
 
-1. This is not a full backup as most account settings are not being copied
+1. This is not a full backup, as most account settings are not being copied
 2. This script was tested with Free and Pro zones in the same account
 
 ## (*) Updating the batch file
