@@ -96,7 +96,11 @@ for /L %%i in (1,1,9) do (
 	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/firewall/waf/overrides" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\WAF-Overrides.txt"
 	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Settings.txt"
 	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_config_settings/entrypoint" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Configuration-Rules.txt"
-    echo.
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/security_level" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Security-level.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/challenge_ttl" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Challenge-TTL.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/browser_check" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Browser-Check.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/replace_insecure_js" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Security-replace-insecure-s.txt"
+	echo.
 )
 
 
