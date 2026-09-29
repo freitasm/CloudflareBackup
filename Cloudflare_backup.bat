@@ -1,72 +1,54 @@
 @echo off
 setlocal enabledelayedexpansion
 
-for /f "tokens=1-3 delims=/" %%a in ("%date%") do (
-    set "year=%%c"
-    set "month=%%b"
-    set "day=%%c"
-	)
+:: Date/time via PowerShell, independent of the Windows display language.
+:: (The original approach parsed the output of the "date" command, which
+:: broke on non-English locales because the header format differs.)
+for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd"') do set "BatchDate=%%i"
+for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format HH-mm-ss"') do set "BatchTime=%%i"
 
-if "%date%A" LSS "A" (set toks=1-3) else (set toks=2-4)
-	for /f "tokens=2-4 delims=(-)" %%a in ('echo:^|date') do (
-		for /f "tokens=%toks% delims=.-/ " %%i in ('date/t') do (
-			set '%%a'=%%i
-			set '%%b'=%%j
-			set '%%c'=%%k))
-if %'yy'% LSS 100 set 'yy'=20%'yy'%
-set "BatchDate=%'yy'%-%'mm'%-%'dd'%"
+:: ---------------------------------------------------------------------
+:: Credentials
+:: Cloudflare has two authentication schemes and they are NOT interchangeable:
+::   - Global API Key (legacy): requires X-Auth-Email + X-Auth-Key
+::   - API Token (created from the dashboard, recommended): requires only
+::     the "Authorization: Bearer <token>" header, no email needed
+:: Create a Token with Read access to all zones at:
+:: https://dash.cloudflare.com/profile/api-tokens
+:: ---------------------------------------------------------------------
 
-for /f "tokens=1-3 delims=:." %%a in ("%time%") do (
-    set "hour=%%a"
-    set "minute=%%b"
-    set "second=%%c"
+set "APIToken=[REPLACE WITH YOUR CLOUDFLARE API TOKEN]"
+
+:: ---------------------------------------------------------------------
+:: Zone discovery
+:: Zones are fetched dynamically from the API (paginated), so there is no
+:: fixed list to maintain by hand when a domain is added or removed.
+:: ---------------------------------------------------------------------
+
+set "ZonesFile=%TEMP%\cf_zones_%RANDOM%.txt"
+powershell -NoProfile -Command "$headers=@{'Authorization'='Bearer %APIToken%';'Content-Type'='application/json'}; $page=1; $all=@(); do { $resp = Invoke-RestMethod -Uri ('https://api.cloudflare.com/client/v4/zones?per_page=50&page=' + $page) -Headers $headers; $all += $resp.result; $page++ } while ($page -le $resp.result_info.total_pages); $all | ForEach-Object { $_.id + '|' + $_.name + '|' + $_.account.id } | Out-File -Encoding ascii '%ZonesFile%'"
+
+set "ZoneCount=0"
+for /f "usebackq tokens=1-3 delims=|" %%a in ("%ZonesFile%") do (
+	set /a ZoneCount+=1
+	set "ZoneID!ZoneCount!=%%a"
+	set "Domain!ZoneCount!=%%b"
+	set "AccountID!ZoneCount!=%%c"
+)
+del "%ZonesFile%" >nul 2>&1
+
+echo Found !ZoneCount! zone^(s^) to back up.
+echo.
+
+if !ZoneCount! EQU 0 (
+	echo No zones found: check that APIToken is set and valid.
+	pause
+	exit /b 1
 )
 
-:: Ensure leading zeros for single-digit values
-rem if %hour% lss 10 set "hour=0%hour%"
-rem if %minute% lss 10 set "minute=0%minute%"
-rem if %second% lss 10 set "second=0%second%"
+:: Loop through all zones found (nothing to update by hand)
 
-set "BatchTime=%hour%-%minute%-%second%"
-
-:: Credentials and API keys
-
-set "LoginEmail=[REPLACE WITH YOUR CLOUDFLARE LOGIN EMAIL]"
-set "APIKey=[REPLACE WITH YOUR API KEY]"
-
-:: Define the value pairs
-set "ZoneID1=[REPLACE WITH ZONE ID TO BACKUP]"
-set "Domain1=[REPLACE WITH DOMAIN NAME FOR THIS ZONE]"
-
-set "ZoneID2=[REPLACE WITH ZONE ID TO BACKUP]"
-set "Domain2=[REPLACE WITH DOMAIN NAME FOR THIS ZONE]"
-
-set "ZoneID3=[REPLACE WITH ZONE ID TO BACKUP]"
-set "Domain3=[REPLACE WITH DOMAIN NAME FOR THIS ZONE]"
-
-set "ZoneID4=[REPLACE WITH ZONE ID TO BACKUP]"
-set "Domain4=[REPLACE WITH DOMAIN NAME FOR THIS ZONE]"
-
-set "ZoneID5=[REPLACE WITH ZONE ID TO BACKUP]"
-set "Domain5=[REPLACE WITH DOMAIN NAME FOR THIS ZONE]"
-
-set "ZoneID6=[REPLACE WITH ZONE ID TO BACKUP]"
-set "Domain6=[REPLACE WITH DOMAIN NAME FOR THIS ZONE]"
-
-set "ZoneID7=[REPLACE WITH ZONE ID TO BACKUP]"
-set "Domain7=[REPLACE WITH DOMAIN NAME FOR THIS ZONE]"
-
-set "ZoneID8=[REPLACE WITH ZONE ID TO BACKUP]"
-set "Domain8=[REPLACE WITH DOMAIN NAME FOR THIS ZONE]"
-
-set "ZoneID9=[REPLACE WITH ZONE ID TO BACKUP]"
-set "Domain9=[REPLACE WITH DOMAIN NAME FOR THIS ZONE]"
-
-:: Loop through the value pairs
-:: Starts from 1, increment by 1, up to 9
-:: Change last number to total number of zones to backup
-
-for /L %%i in (1,1,9) do (
+for /L %%i in (1,1,!ZoneCount!) do (
 	set "FullFolder=!Domain%%i!\%BatchDate% %BatchTime%"
 
 	echo ZoneID=!ZoneID%%i!
@@ -75,46 +57,59 @@ for /L %%i in (1,1,9) do (
 	
 	md "!FullFolder!"
 	
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/firewall/rules?per_page=100" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\WAF.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/custom_pages" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Custom-Pages.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/dns_records" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\DNS.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/dnssec" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\DNSSEC.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/firewall/access_rules/rules" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\IP-Access-Rules.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/load_balancers" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Load-Balancers.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/page_shield" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Page_Shield.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rate_limits" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Rate-Limits.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_transform/entrypoint" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Transform-Rewrite-URL.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_late_transform/entrypoint" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Transform-Modify-Request-Header.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_response_headers_transform/entrypoint" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Transform-Modify-Response-Headers.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/managed_headers" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Transform-Managed-Transforms.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_cache_settings/entrypoint" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Cache-Rules.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_dynamic_redirect/entrypoint" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Redirect-Rules.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_origin/entrypoint" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Origin-Rules.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/url_normalization" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\URL-Normalisation.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/firewall/ua_rules" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\UA-Blocking.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/firewall/waf/overrides" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\WAF-Overrides.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/firewall/waf/overrides" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\WAF-Overrides.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Settings.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_config_settings/entrypoint" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Configuration-Rules.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/security_level" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Security-level.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/challenge_ttl" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Challenge-TTL.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/browser_check" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Browser-Check.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/replace_insecure_js" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FullFolder!\Security-replace-insecure-s.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/firewall/rules?per_page=100" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\WAF.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/custom_pages" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Custom-Pages.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/email/routing" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Email-Routing-Settings.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/email/routing/rules?per_page=50" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Email-Routing-Rules.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/email/routing/rules/catch_all" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Email-Routing-CatchAll.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/dns_records" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\DNS.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/dns_records/export" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\DNS-Export-BIND.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/dnssec" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\DNSSEC.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/firewall/access_rules/rules" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\IP-Access-Rules.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/load_balancers" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Load-Balancers.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/page_shield" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Page_Shield.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_firewall_custom/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Custom-Rules-WAF.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_ratelimit/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Rate-Limiting-Rules.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_firewall_managed/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Managed-Rules-Overrides.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Rulesets-Inventory.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/pagerules" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Page-Rules-Legacy.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rate_limits" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Rate-Limits-Legacy.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_transform/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Transform-Rewrite-URL.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_late_transform/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Transform-Modify-Request-Header.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_response_headers_transform/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Transform-Modify-Response-Headers.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/managed_headers" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Transform-Managed-Transforms.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_cache_settings/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Cache-Rules.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_dynamic_redirect/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Redirect-Rules.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_origin/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Origin-Rules.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/url_normalization" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\URL-Normalisation.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/firewall/ua_rules" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\UA-Blocking.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/firewall/waf/overrides" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\WAF-Overrides.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Settings.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_config_settings/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Configuration-Rules.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/security_level" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Security-level.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/challenge_ttl" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Challenge-TTL.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/browser_check" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Browser-Check.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/replace_insecure_js" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Security-replace-insecure-s.txt"
 	echo.
 )
 
-
-:: Backup account level data
+:: ---------------------------------------------------------------------
+:: Account-level data
+:: ---------------------------------------------------------------------
 
 set "FolderAccount=account\%BatchDate% %BatchTime%"
 
 md "!FolderAccount!"
 
-curl -X GET "https://api.cloudflare.com/client/v4//user/load_balancers/pools" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FolderAccount!\Load-Balancers-Pools.txt"
-curl -X GET "https://api.cloudflare.com/client/v4//user/load_balancers/pools/[REPLACE WITH LOAD BALANCER POOL ID 1]" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FolderAccount!\Load-Balancers-Pools-Details-1.txt"
-curl -X GET "https://api.cloudflare.com/client/v4//user/load_balancers/pools/[REPLACE WITH LOAD BALANCER POOL ID 2]" -H "X-Auth-Email:!LoginEmail!" -H "X-Auth-Key:!APIKey!" -H "Content-Type: application/json" -o "!FolderAccount!\Load-Balancers-Pools-Details-2.txt"
+:: The response already includes the full configuration of every pool
+:: (origins, monitor, steering, etc.), so no separate per-pool call is needed.
+curl -X GET "https://api.cloudflare.com/client/v4/user/load_balancers/pools" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FolderAccount!\Load-Balancers-Pools.txt"
 
-:: End Backup account level data
+:: Email Routing destination addresses live at the account level, not the
+:: zone level. This uses the AccountID of the first zone found: fine if the
+:: token only covers a single account (the typical case); if it covers more
+:: than one, repeat this call with the other AccountID# values.
+curl -X GET "https://api.cloudflare.com/client/v4/accounts/!AccountID1!/email/routing/addresses?per_page=50" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FolderAccount!\Email-Routing-Destination-Addresses.txt"
 
-pause 
+pause
 endlocal
