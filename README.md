@@ -1,11 +1,39 @@
 # CloudflareBackup
-A Windows script to create Cloudflare configuration backups using curl.
+A Windows script to back up Cloudflare zone configuration using curl and PowerShell.
 
 ## Prepare the script
 
 1. Create a folder for your backups
 2. Download the batch file to the new folder
-3. Updated the batch file as required (*)
+3. Create a Cloudflare API Token (see below) and paste it into the script
+
+## Authentication
+
+This script authenticates using a Cloudflare **API Token**, not the legacy
+Global API Key. Create one at:
+https://dash.cloudflare.com/profile/api-tokens
+
+The token needs **Read** access to:
+- Zone > Zone (to list zones)
+- Zone > Zone Settings
+- Zone > DNS
+- Zone > Email Routing Rules
+- Zone > Firewall Services
+- Zone > Page Rules
+- Zone > Web3 (Custom Pages) — optional, only if used
+- Account > Load Balancing: Monitors and Pools
+- Account > Email Routing Addresses
+
+Open the script and replace:
+- `[REPLACE WITH YOUR CLOUDFLARE API TOKEN]` with your token
+
+No email address is required with API Tokens.
+
+## Zone discovery
+
+Zones are discovered automatically via the Cloudflare API (paginated), so
+there is nothing to configure per domain — the script backs up every zone
+the token can see.
 
 ## To run this script via File Explorer
 
@@ -20,31 +48,44 @@ A Windows script to create Cloudflare configuration backups using curl.
 
 ## Output structure
 
-1. The folder name convention will be
+1. The folder name convention is:
       - Backup root (where you drop the script)
-         - Backup root\Domain 
-            - Backup root\Domain\YYYY-MM-DD HH:MM:SS
-         - Backup root\account (for Load Balancer Pools)
+         - Backup root\Domain
+            - Backup root\Domain\YYYY-MM-DD HH-MM-SS
+         - Backup root\account (for Load Balancer Pools and Email Routing addresses)
 
 ![Backup folder structure](https://github.com/freitasm/CloudflareBackup/assets/20156997/2165b7d4-7b35-4341-b43e-91ce07d3637d)
 
+2. Per zone, the following are backed up: DNS records (raw JSON and a BIND
+   zone file export), DNSSEC, WAF custom rules (legacy and current Rulesets
+   engine), Rate Limiting rules, Managed Rules overrides, a full ruleset
+   inventory, legacy Page Rules, IP Access Rules, User-Agent blocking,
+   Load Balancers, Page Shield, Email Routing (settings, rules, catch-all),
+   Transform Rules, Cache Rules, Redirect Rules, Origin Rules, Configuration
+   Rules, URL normalization, Custom Pages, and zone Settings.
+
+3. At the account level: Load Balancer Pools and Email Routing destination
+   addresses.
+
 ## Comments
 
-1. This is not a full backup, as most account settings are not being copied
-2. This script was tested with Free and Pro zones in the same account
+1. This is not a full disaster-recovery backup. It does not cover: domain
+   registration (relevant if the domain is registered through Cloudflare
+   Registrar), private keys for custom SSL certificates (the API never
+   returns them), or other Cloudflare products such as Workers, Pages,
+   R2/KV, Zero Trust/Access, or Tunnels.
+2. A handful of endpoints (legacy Rate Limits, legacy WAF Overrides) are
+   deprecated by Cloudflare in favor of the Rulesets API, but are still
+   queried and saved (suffixed `-Legacy`) for reference; the current
+   equivalents are captured through the Rulesets endpoints.
+3. This script only reads data (GET requests). It does not implement a
+   restore/import — most of the saved JSON would need to be replayed
+   manually against the corresponding write endpoints, except for DNS
+   records, which can be restored directly from the BIND export via the
+   `dns_records/import` endpoint.
+4. This script was tested with Free-plan zones in the same account.
 
-## (*) Updating the batch file
+## Updating the API Token later
 
-1. Find the following items to replace:
-   - [REPLACE WITH YOUR CLOUDFLARE LOGIN EMAIL]: Enter your Cloudflare login email
-   - [REPLACE WITH YOUR API KEY]: Enter an API key with Read rights to all zones
-2. For each Zone you want to create a backup for:
-   - Update the line ZoneID#, Domain#
-      - The sample script has nine zones ZoneID1 ... ZoneID9 and corresponding Domain1 ... Domain9
-      - You can remove pairs if you have less than nine zones
-      - You can add pairs if you have more than nine zones, remembering to name the pair correctly with the sequential numbers
-      - If you add or remove pairs, adjust the "for /L %%i in (1,1,9) do (" statement replacing 9 with the correct number of pairs
-   - [REPLACE WITH ZONE ID TO BACKUP]: Enter the Zone ID
-   - [REPLACE WITH DOMAIN NAME FOR THIS ZONE]: Enter the domain name to be used as a sub-folder
-3. Load Balancer pools are copied from account, so these need to be manually updated, with the correct Load Balance Pool
-   - If you don't use Load Balancers you can remove the commands between the comments :: Backup account level data and :: End Backup account level data
+If you rotate your API Token, just replace the value assigned to
+`APIToken` near the top of the script — nothing else needs to change.
