@@ -14,15 +14,25 @@ Global API Key. Create one at:
 https://dash.cloudflare.com/profile/api-tokens
 
 The token needs **Read** access to:
-- Zone > Zone (to list zones)
-- Zone > Zone Settings
+- Account > Load Balancing: Monitors and Pools
+- Account > Email Routing Addresses
+- Account > Transform Rule
+- Zone > Cache Rules
+- Zone > Config Rules
 - Zone > DNS
 - Zone > Email Routing Rules
 - Zone > Firewall Services
+- Zone > Managed Headers
+- Zone > Origin Rules
 - Zone > Page Rules
+- Zone > Single Redirect
+- Zone > Transform Rules
 - Zone > Web3 (Custom Pages) — optional, only if used
-- Account > Load Balancing: Monitors and Pools
-- Account > Email Routing Addresses
+- Zone > Zone Settings
+- Zone > Zone (to list zones)
+- Zone > Zone WAF
+
+<img width="552" height="1263" alt="API-token-permissions" src="https://github.com/user-attachments/assets/beea4ce4-a519-4609-91fc-bb3164e30fa8" />
 
 Open the script and replace:
 - `[REPLACE WITH YOUR CLOUDFLARE API TOKEN]` with your token
@@ -62,7 +72,7 @@ the token can see.
    inventory, legacy Page Rules, IP Access Rules, User-Agent blocking,
    Load Balancers, Page Shield, Email Routing (settings, rules, catch-all),
    Transform Rules, Cache Rules, Redirect Rules, Origin Rules, Configuration
-   Rules, URL normalization, Custom Pages, and zone Settings.
+   Rules, URL normalisation, Custom Pages, and zone Settings.
 
 3. At the account level: Load Balancer Pools and Email Routing destination
    addresses.
@@ -75,7 +85,7 @@ the token can see.
    returns them), or other Cloudflare products such as Workers, Pages,
    R2/KV, Zero Trust/Access, or Tunnels.
 2. A handful of endpoints (legacy Rate Limits, legacy WAF Overrides) are
-   deprecated by Cloudflare in favor of the Rulesets API, but are still
+   deprecated by Cloudflare in favour of the Rulesets API, but are still
    queried and saved (suffixed `-Legacy`) for reference; the current
    equivalents are captured through the Rulesets endpoints.
 3. This script only reads data (GET requests). It does not implement a
@@ -83,7 +93,7 @@ the token can see.
    manually against the corresponding write endpoints, except for DNS
    records, which can be restored directly from the BIND export via the
    `dns_records/import` endpoint.
-4. This script was tested with Free-plan zones in the same account.
+4. This script was tested with free- and pro-plan zones in the same account.
 
 ## Updating the API Token later
 
