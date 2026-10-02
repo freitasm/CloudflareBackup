@@ -111,5 +111,4 @@ curl -X GET "https://api.cloudflare.com/client/v4/user/load_balancers/pools" -H 
 :: than one, repeat this call with the other AccountID# values.
 curl -X GET "https://api.cloudflare.com/client/v4/accounts/!AccountID1!/email/routing/addresses?per_page=50" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FolderAccount!\Email-Routing-Destination-Addresses.txt"
 
-pause
 endlocal
