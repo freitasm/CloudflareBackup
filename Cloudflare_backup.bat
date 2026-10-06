@@ -81,15 +81,16 @@ for /L %%i in (1,1,!ZoneCount!) do (
 	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_cache_settings/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Cache-Rules.txt"
 	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_dynamic_redirect/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Redirect-Rules.txt"
 	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_request_origin/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Origin-Rules.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_config_settings/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Configuration-Rules.txt"
 	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/url_normalization" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\URL-Normalisation.txt"
 	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/firewall/ua_rules" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\UA-Blocking.txt"
 	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/firewall/waf/overrides" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\WAF-Overrides.txt"
 	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Settings.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/rulesets/phases/http_config_settings/entrypoint" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Configuration-Rules.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/security_level" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Security-level.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/challenge_ttl" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Challenge-TTL.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/advanced_ddos" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Advanced-DDoS.txt"
 	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/browser_check" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Browser-Check.txt"
-	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/replace_insecure_js" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Security-replace-insecure-s.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/challenge_ttl" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Security-Challenge-TTL.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/settings/replace_insecure_js" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Security-replace-insecure-js.txt"
+	curl -X GET "https://api.cloudflare.com/client/v4/zones/!ZoneID%%i!/healthchecks" -H "Authorization: Bearer !APIToken!" -H "Content-Type: application/json" -o "!FullFolder!\Healthchecks.txt"
 	echo.
 )
 
