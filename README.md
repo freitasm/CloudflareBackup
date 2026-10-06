@@ -22,6 +22,7 @@ The token needs **Read** access to:
 - Zone > DNS
 - Zone > Email Routing Rules
 - Zone > Firewall Services
+- Zone > Health Checks
 - Zone > Managed Headers
 - Zone > Origin Rules
 - Zone > Page Rules
